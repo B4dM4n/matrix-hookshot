@@ -1,6 +1,6 @@
 import { AdminAccountData } from "./AdminRoomCommandHandler";
 import { AdminRoom, BRIDGE_ROOM_TYPE, LEGACY_BRIDGE_ROOM_TYPE } from "./AdminRoom";
-import { Appservice, IAppserviceRegistration, RichRepliesPreprocessor, IRichReplyMetadata, StateEvent, PantalaimonClient, MatrixClient, EventKind, PowerLevelsEvent } from "matrix-bot-sdk";
+import { Appservice, IAppserviceRegistration, RichRepliesPreprocessor, IRichReplyMetadata, StateEvent, MatrixClient, EventKind, PowerLevelsEvent } from "matrix-bot-sdk";
 import { BridgeConfig, BridgePermissionLevel, GitLabInstance } from "./Config/Config";
 import { BridgeWidgetApi } from "./Widgets/BridgeWidgetApi";
 import { CommentProcessor } from "./CommentProcessor";
@@ -119,24 +119,6 @@ export class Bridge {
             await ensureFigmaWebhooks(this.config.figma, this.as.botClient);
         }
 
-        if (this.config.bridge.pantalaimon) {
-            log.info(`Loading pantalaimon client`);
-            const pan = new PantalaimonClient(
-                this.config.bridge.pantalaimon.url,
-                this.storage,
-            );
-            this.encryptedMatrixClient = await pan.createClientWithCredentials(
-                this.config.bridge.pantalaimon.username,
-                this.config.bridge.pantalaimon.password
-            );
-            this.encryptedMatrixClient.on("room.message", async (roomId, event) => {
-                return this.onRoomMessage(roomId, event);
-            });
-            // TODO: Filter
-            await this.encryptedMatrixClient.start();
-            log.info(`Pan client is syncing`);
-        }
-
 
         await this.tokenStore.load();
         const connManager = this.connectionManager = new ConnectionManager(this.as,
@@ -202,6 +184,11 @@ export class Bridge {
 
         this.as.on("room.join", async (roomId, event) => {
             return this.onRoomJoin(roomId, event);
+        });
+
+        this.as.on("room.failed_decryption", (roomId, event, err) => {
+            log.warn(`Failed to decrypt event ${event.event_id} from ${roomId}: ${err.message}`);
+            Metrics.matrixAppserviceDecryptionFailed.inc();
         });
 
         this.queue.subscribe("response.matrix.message");
