@@ -15,7 +15,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN apt-get update && apt-get install -y build-essential cmake
 
 # Workaround: Need to install esbuild manually https://github.com/evanw/esbuild/issues/462#issuecomment-771328459
-RUN yarn --ignore-scripts --pure-lockfile
+RUN yarn --pure-lockfile
 RUN node node_modules/esbuild/install.js
 RUN yarn build
 
@@ -33,7 +33,7 @@ WORKDIR /bin/matrix-hookshot
 RUN yarn --ignore-scripts --production --pure-lockfile && yarn cache clean
 
 # Copy rust bindings for crypto, since we built them in the previous step.
-COPY --from=builder /src/node_modules/@turt2live/matrix-sdk-crypto-nodejs /bin/matrix-hookshot/node_modules/@turt2live/matrix-sdk-crypto-nodejs
+COPY --from=builder /src/node_modules/@matrix-org/matrix-sdk-crypto-nodejs /bin/matrix-hookshot/node_modules/@matrix-org/matrix-sdk-crypto-nodejs
 
 VOLUME /data
 EXPOSE 9993
